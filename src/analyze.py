@@ -16,6 +16,7 @@ import time
 from pathlib import Path
 
 KINDS = {"lesson", "antipattern", "decision", "constraint", "convention"}
+SCOPES = {"general", "language", "project"}
 MAX_LESSONS = 3
 MIN_CONFIDENCE = 0.5
 # Closing tag optional: the model sometimes stops without it. raw_decode ignores trailing text.
@@ -28,6 +29,11 @@ Rules:
 - Only report a lesson when the context gives evidence of WHY: a review comment, a commit
   message made after review, or an explicit statement in the PR description.
 - Prefer commits after the first review (`after_first_review: true`) and commented files.
+- Every lesson MUST cite at least one review comment id that explains the why.
+  A lesson you can only infer from the diff or the PR description is not reportable.
+- Do not report documentation wording, formatting, ordering, or test-style preferences.
+- Set `scope`: "general" (any codebase), "language" (one language or framework),
+  or "project" (only makes sense in this repository).
 - Do not call any tool and do not write files. Answer with text only.
 - Return at most {max_lessons} lessons. Return an empty list when nothing generalizable exists.
 - Each lesson must be reusable outside this PR: state the context where it applies.
@@ -38,6 +44,7 @@ Output exactly one block, nothing else:
 <lessons_json>
 {{"lessons":[{{
   "kind": "lesson|antipattern|decision|constraint|convention",
+  "scope": "general|language|project",
   "title": "short",
   "rule": "one generalizable sentence",
   "problem": "what went wrong or was at stake",
@@ -65,14 +72,29 @@ def build_prompt(context: dict, feedback: str | None = None) -> str:
     return text
 
 
+# Explicit deny for every tool: the analysis agent only reads its prompt and answers.
+# Relying on OpenCode defaults would make this protection change with the version.
+DENY_ALL = {k: "deny" for k in (
+    "read", "edit", "glob", "grep", "list", "bash", "task", "external_directory",
+    "todowrite", "question", "webfetch", "websearch", "lsp", "doom_loop", "skill")}
+
+
+def opencode_config() -> dict:
+    return {"$schema": "https://opencode.ai/config.json", "permission": DENY_ALL,
+            "mcp": {}, "autoupdate": False, "share": "disabled"}
+
+
 def call_agent(prompt: str, model: str) -> str:
     # Empty working dir: the agent sees only the prompt, not the repository.
     # Prompt goes through stdin: no argv size limit, and the agent has no file to
     # try (and fail) to read with a tool.
     with tempfile.TemporaryDirectory() as workdir:
+        (Path(workdir) / "opencode.json").write_text(json.dumps(opencode_config()))
+        # Empty XDG config dir: user-level config (MCP servers, plugins) must not leak in.
+        env = {**os.environ, "XDG_CONFIG_HOME": str(Path(workdir) / ".config")}
         result = subprocess.run(
             ["opencode", "run", "--model", model, "--pure"],
-            input=prompt, cwd=workdir, capture_output=True, text=True, timeout=600,
+            input=prompt, cwd=workdir, env=env, capture_output=True, text=True, timeout=600,
         )
     if result.returncode != 0:
         raise RuntimeError(f"opencode exit {result.returncode}: {result.stderr[-500:]}")
@@ -100,6 +122,10 @@ def validate(lesson: dict, context: dict) -> str | None:
             return f"missing or empty field: {key}"
     if lesson.get("kind") not in KINDS:
         return f"invalid kind: {lesson.get('kind')!r}"
+    if lesson.get("scope") not in SCOPES:
+        return f"invalid scope: {lesson.get('scope')!r}"
+    if lesson["scope"] == "project":
+        return "project-specific lesson: not reusable outside this repository"
     conf = lesson.get("confidence")
     if not isinstance(conf, (int, float)) or isinstance(conf, bool) or not 0 <= conf <= 1:
         return "confidence must be a number in [0, 1]"
@@ -116,14 +142,11 @@ def validate(lesson: dict, context: dict) -> str | None:
     comment_ids = evidence.get("review_comment_ids") or []
     if any(i not in comment_paths for i in comment_ids):
         return "evidence.review_comment_ids references unknown comments"
+    if not comment_ids:
+        return "no review comment cited: the why must come from a human review"
     # A cited comment must be about a file the lesson claims as evidence.
     if any(comment_paths[i] not in files for i in comment_ids):
         return "cited review comment is on a file not listed in evidence.files"
-    has_why = bool(comment_ids) or any(r["body"].strip() for r in context["reviews"]) \
-        or any(c["after_first_review"] for c in context["commits"]) \
-        or bool(context["meta"].get("body", "").strip())
-    if not has_why:
-        return "no source of 'why' in the PR context"
     return None
 
 

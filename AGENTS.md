@@ -11,4 +11,4 @@ How to use the results:
 - Skip lessons whose `score` is low or whose context does not match the task.
 - When a lesson changes what you do, say which one (its `title`) in your answer.
 
-Do not call `brain_store_lesson` yourself: lessons are extracted after a PR is merged.
+Lessons are written by the post-merge extraction job; the brain tools you have are read-only.

@@ -29,7 +29,6 @@ def get_lesson(lesson_id: str) -> dict | None:
     return store.get_lesson(lesson_id)
 
 
-@mcp.tool()
 def store_lesson(lesson: dict, repository: str, pull_request: int, last_sha: str) -> dict:
     """Store a candidate lesson extracted from a merged PR.
 
@@ -39,10 +38,16 @@ def store_lesson(lesson: dict, repository: str, pull_request: int, last_sha: str
                                        "pull_request": pull_request, "last_sha": last_sha})
 
 
-@mcp.tool()
 def mark_lessons_contested(repository: str, pull_request: int) -> dict:
     """Flag lessons that came from a PR later reverted or hot-fixed."""
     return store.mark_lessons_contested(repository, pull_request)
+
+
+# Agents that consume lessons must not be able to write them: writes come from the
+# post-merge extraction job only (python -m app.ingest). Opt in with BRAIN_WRITE_TOOLS=1.
+if os.environ.get("BRAIN_WRITE_TOOLS") == "1":
+    mcp.tool()(store_lesson)
+    mcp.tool()(mark_lessons_contested)
 
 
 def main() -> None:
