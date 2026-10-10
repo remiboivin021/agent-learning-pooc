@@ -69,8 +69,9 @@ def call_agent(prompt: str, model: str) -> str:
         prompt_file = Path(workdir) / "prompt.md"
         prompt_file.write_text(prompt)
         result = subprocess.run(
-            ["opencode", "run", "--model", model, "--pure", "--file", str(prompt_file),
-             "Follow the instructions in the attached prompt.md exactly."],
+            # Message first: --file is an array option and would swallow a trailing positional.
+            ["opencode", "run", "Follow the instructions in the attached prompt.md exactly.",
+             "--model", model, "--pure", "--file", str(prompt_file)],
             cwd=workdir, capture_output=True, text=True, timeout=600,
         )
     if result.returncode != 0:
