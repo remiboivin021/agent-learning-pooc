@@ -125,11 +125,15 @@ def analyse(context: dict, model: str, agent=call_agent) -> dict:
     feedback = None
     lessons: list[dict] = []
     for attempt in range(2):
+        raw = ""
         try:
-            lessons = parse_output(agent(build_prompt(context, feedback), model))
+            raw = agent(build_prompt(context, feedback), model)
+            lessons = parse_output(raw)
             break
         except (ValueError, json.JSONDecodeError) as err:
             feedback = str(err)
+            print(f"attempt {attempt + 1} invalid ({err}); raw output head: {raw[:1500]!r}",
+                  file=sys.stderr)
             if attempt == 1:
                 raise RuntimeError(f"agent output invalid after retry: {err}") from err
 
