@@ -157,7 +157,7 @@ def analyse(context: dict, model: str, agent=call_agent) -> dict:
 def main() -> int:
     context_path = Path(os.environ.get("INPUT_OUTPUT_PATH", "context.json"))
     lessons_path = Path(os.environ.get("INPUT_LESSONS_PATH", "lessons.json"))
-    model = os.environ.get("INPUT_MODEL", "openrouter/anthropic/claude-sonnet-4.5")
+    model = os.environ.get("INPUT_MODEL", "openrouter/nvidia/nemotron-3-ultra-550b-a55b:free")
     context = json.loads(context_path.read_text())
     if context.get("skipped"):
         print("context skipped, nothing to analyse")
