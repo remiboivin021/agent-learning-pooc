@@ -66,15 +66,12 @@ def build_prompt(context: dict, feedback: str | None = None) -> str:
 
 def call_agent(prompt: str, model: str) -> str:
     # Empty working dir: the agent sees only the prompt, not the repository.
-    # Prompt goes through a file: diffs can exceed the argv size limit.
+    # Prompt goes through stdin: no argv size limit, and the agent has no file to
+    # try (and fail) to read with a tool.
     with tempfile.TemporaryDirectory() as workdir:
-        prompt_file = Path(workdir) / "prompt.md"
-        prompt_file.write_text(prompt)
         result = subprocess.run(
-            # Message first: --file is an array option and would swallow a trailing positional.
-            ["opencode", "run", "Follow the instructions in the attached prompt.md exactly.",
-             "--model", model, "--pure", "--file", str(prompt_file)],
-            cwd=workdir, capture_output=True, text=True, timeout=600,
+            ["opencode", "run", "--model", model, "--pure"],
+            input=prompt, cwd=workdir, capture_output=True, text=True, timeout=600,
         )
     if result.returncode != 0:
         raise RuntimeError(f"opencode exit {result.returncode}: {result.stderr[-500:]}")
