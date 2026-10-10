@@ -99,7 +99,7 @@ def store_lesson(lesson: dict, source: dict) -> dict:
         vector = embeddings.embed([embeddings.lesson_text(lesson)])[0]
         _ensure_collection(len(vector))
         hits = _q("POST", f"/collections/{config.COLLECTION}/points/search",
-                  {"vector": vector, "limit": 1, "with_payload": False})["result"]
+                  {"vector": vector, "limit": 5, "with_payload": False})["result"]
         if hits and hits[0]["score"] >= config.DEDUP_THRESHOLD:
             existing = hits[0]["id"]
             conn.execute(
@@ -121,7 +121,17 @@ def store_lesson(lesson: dict, source: dict) -> dict:
             "id": lesson_id, "vector": vector,
             "payload": {"kind": lesson["kind"], "tags": lesson.get("tags", []),
                         "status": "candidate", "repo": repo}}]})
-        return {"id": lesson_id, "created": True}
+        # Grey zone: keep the lesson, flag neighbours for a curator instead of merging.
+        near = [h for h in hits if h["score"] >= config.SIMILAR_THRESHOLD]
+        result: dict = {"id": lesson_id, "created": True}
+        if near:
+            titles = dict(conn.execute(
+                "SELECT id::text, title FROM lessons WHERE id = ANY(%s::uuid[])",
+                ([h["id"] for h in near],)).fetchall())
+            result["similar_to"] = [
+                {"id": h["id"], "title": titles.get(h["id"], ""),
+                 "similarity": round(h["score"], 4)} for h in near]
+        return result
 
 
 def _view(row: tuple, score: float | None = None) -> dict:

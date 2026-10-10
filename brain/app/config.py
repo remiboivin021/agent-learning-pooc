@@ -12,3 +12,7 @@ OPENROUTER_URL = os.environ.get("OPENROUTER_URL", "https://openrouter.ai/api/v1"
 
 # Cosine similarity above which a new lesson is a duplicate of a stored one.
 DEDUP_THRESHOLD = float(os.environ.get("DEDUP_THRESHOLD", "0.92"))
+
+# Above this (but below DEDUP_THRESHOLD) a new lesson is stored as its own lesson
+# and reported with `similar_to` so a curator can decide whether to merge.
+SIMILAR_THRESHOLD = float(os.environ.get("SIMILAR_THRESHOLD", "0.5"))
