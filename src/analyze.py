@@ -12,6 +12,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 KINDS = {"lesson", "antipattern", "decision", "constraint", "convention"}
@@ -76,6 +77,8 @@ def call_agent(prompt: str, model: str) -> str:
         )
     if result.returncode != 0:
         raise RuntimeError(f"opencode exit {result.returncode}: {result.stderr[-500:]}")
+    if not result.stdout.strip():
+        raise ValueError(f"empty agent output; stderr tail: {result.stderr[-300:]!r}")
     return result.stdout
 
 
@@ -124,7 +127,8 @@ def validate(lesson: dict, context: dict) -> str | None:
 def analyse(context: dict, model: str, agent=call_agent) -> dict:
     feedback = None
     lessons: list[dict] = []
-    for attempt in range(2):
+    attempts = 3
+    for attempt in range(attempts):
         raw = ""
         try:
             raw = agent(build_prompt(context, feedback), model)
@@ -134,8 +138,9 @@ def analyse(context: dict, model: str, agent=call_agent) -> dict:
             feedback = str(err)
             print(f"attempt {attempt + 1} invalid ({err}); raw output head: {raw[:1500]!r}",
                   file=sys.stderr)
-            if attempt == 1:
+            if attempt == attempts - 1:
                 raise RuntimeError(f"agent output invalid after retry: {err}") from err
+            time.sleep(int(os.environ.get("ANALYZE_RETRY_SLEEP", "20")))  # free models rate-limit
 
     accepted, rejected = [], []
     for lesson in lessons[:MAX_LESSONS]:
