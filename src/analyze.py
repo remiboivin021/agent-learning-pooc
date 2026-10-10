@@ -18,7 +18,8 @@ from pathlib import Path
 KINDS = {"lesson", "antipattern", "decision", "constraint", "convention"}
 MAX_LESSONS = 3
 MIN_CONFIDENCE = 0.5
-OUTPUT_RE = re.compile(r"<lessons_json>\s*(.*?)\s*</lessons_json>", re.S)
+# Closing tag optional: the model sometimes stops without it. raw_decode ignores trailing text.
+OUTPUT_RE = re.compile(r"<lessons_json>\s*(.*?)\s*(?:</lessons_json>|\Z)", re.S)
 
 PROMPT = """You analyse one merged pull request and extract reusable engineering knowledge.
 
@@ -111,10 +112,13 @@ def validate(lesson: dict, context: dict) -> str | None:
     files = evidence.get("files") or []
     if not files or not all(f in known_files for f in files):
         return "evidence.files must be non-empty and present in the PR diff"
-    known_comments = {c["id"] for c in context["review_threads"]}
+    comment_paths = {c["id"]: c["path"] for c in context["review_threads"]}
     comment_ids = evidence.get("review_comment_ids") or []
-    if any(i not in known_comments for i in comment_ids):
+    if any(i not in comment_paths for i in comment_ids):
         return "evidence.review_comment_ids references unknown comments"
+    # A cited comment must be about a file the lesson claims as evidence.
+    if any(comment_paths[i] not in files for i in comment_ids):
+        return "cited review comment is on a file not listed in evidence.files"
     has_why = bool(comment_ids) or any(r["body"].strip() for r in context["reviews"]) \
         or any(c["after_first_review"] for c in context["commits"]) \
         or bool(context["meta"].get("body", "").strip())
