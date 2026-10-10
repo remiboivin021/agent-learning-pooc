@@ -1,5 +1,11 @@
-FROM python:3.12-slim
+FROM node:22-slim
 
-COPY src/extract.py /app/extract.py
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 \
+    && rm -rf /var/lib/apt/lists/* \
+    && npm install -g opencode-ai@1.18.35
 
-ENTRYPOINT ["python", "/app/extract.py"]
+COPY src/extract.py src/analyze.py /app/
+COPY entrypoint.sh /app/entrypoint.sh
+
+ENTRYPOINT ["sh", "/app/entrypoint.sh"]

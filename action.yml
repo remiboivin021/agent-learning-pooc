@@ -1,5 +1,5 @@
 name: PR Learning Extractor
-description: Build an analysis context (review threads, commits, ranked diffs) from a merged pull request.
+description: Build an analysis context from a merged pull request and extract candidate lessons with an OpenCode agent.
 
 inputs:
   github_token:
@@ -19,6 +19,17 @@ inputs:
     description: Approximate token budget for diffs.
     required: false
     default: "60000"
+  openrouter_api_key:
+    description: OpenRouter key. When empty, only context.json is produced (no analysis).
+    required: false
+  model:
+    description: OpenCode model in provider/model form.
+    required: false
+    default: openrouter/anthropic/claude-sonnet-4.5
+  lessons_path:
+    description: Where to write lessons.json.
+    required: false
+    default: lessons.json
 
 outputs:
   skipped:
