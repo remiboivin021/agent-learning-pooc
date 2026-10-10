@@ -87,7 +87,8 @@ def parse_output(raw: str) -> list[dict]:
     match = OUTPUT_RE.search(raw)
     if not match:
         raise ValueError("no <lessons_json> block found")
-    data = json.loads(match.group(1))
+    # raw_decode: tolerate trailing junk after the first JSON object.
+    data, _ = json.JSONDecoder().raw_decode(match.group(1))
     lessons = data.get("lessons")
     if not isinstance(lessons, list):
         raise ValueError('"lessons" must be a list')
