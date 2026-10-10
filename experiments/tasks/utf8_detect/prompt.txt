@@ -1,0 +1,1 @@
+supports_utf8 in detect.py must tell whether standard output can encode UTF-8 text. Review it for bugs and fix them in place. Reply with a one-line summary.

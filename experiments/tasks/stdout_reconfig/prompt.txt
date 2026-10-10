@@ -1,0 +1,1 @@
+textout.py is a library imported by other applications. Review init_output for design problems and fix them in place. Reply with a one-line summary.

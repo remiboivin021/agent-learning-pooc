@@ -1,0 +1,1 @@
+Review parse_color in colors.py for error handling issues and fix them in place. Reply with a one-line summary.
