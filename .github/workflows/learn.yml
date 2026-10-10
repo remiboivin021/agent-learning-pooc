@@ -1,0 +1,56 @@
+name: learn-from-pr
+
+on:
+  pull_request:
+    types: [closed]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Merged PR number to extract context from (backfill / manual test)
+        required: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: learn-pr-${{ github.event.pull_request.number || inputs.pr_number }}
+  cancel-in-progress: false
+
+jobs:
+  extract:
+    # On pull_request: only merged PRs. workflow_dispatch always runs.
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      # Needed so the local action (./) and its Dockerfile are available.
+      - uses: actions/checkout@v4
+
+      - name: Extract PR context
+        id: extract
+        uses: ./
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          pr_number: ${{ inputs.pr_number }}
+          output_path: context.json
+
+      - name: Upload context
+        if: steps.extract.outputs.skipped != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-context-${{ github.event.pull_request.number || inputs.pr_number }}
+          path: context.json
+          retention-days: 14
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### learn-from-pr"
+            echo "- PR: #${{ github.event.pull_request.number || inputs.pr_number }}"
+            echo "- skipped: ${{ steps.extract.outputs.skipped || 'n/a' }}"
+            if [ -f context.json ]; then
+              echo "- context.json: $(wc -c < context.json) bytes"
+              echo "- diffs: $(python3 -c 'import json;print(len(json.load(open("context.json")).get("diffs",[])))')"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

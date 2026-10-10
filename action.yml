@@ -1,0 +1,31 @@
+name: PR Learning Extractor
+description: Build an analysis context (review threads, commits, ranked diffs) from a merged pull request.
+
+inputs:
+  github_token:
+    description: Token with contents:read and pull-requests:read.
+    required: true
+  pr_number:
+    description: PR number. Defaults to the number from the pull_request event.
+    required: false
+  repository:
+    description: owner/name. Defaults to the current repository.
+    required: false
+  output_path:
+    description: Where to write context.json.
+    required: false
+    default: context.json
+  token_budget:
+    description: Approximate token budget for diffs.
+    required: false
+    default: "60000"
+
+outputs:
+  skipped:
+    description: "true when the PR was not eligible (not merged, bot, revert)."
+  context_path:
+    description: Path to the generated context.json.
+
+runs:
+  using: docker
+  image: docker/Dockerfile
