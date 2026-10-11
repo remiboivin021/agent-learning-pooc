@@ -115,6 +115,21 @@ class OpencodeConfigTest(unittest.TestCase):
             self.assertEqual(cfg["permission"][tool], "deny")
         self.assertEqual(cfg["mcp"], {})
 
+    def test_agent_env_points_opencode_at_the_workdir(self):
+        # Regression: an inherited PWD made OpenCode load the caller's repo config
+        # (bash allowed) instead of the deny-all config in the temporary workdir.
+        old = os.environ.get("PWD")
+        os.environ["PWD"] = "/somewhere/else"
+        try:
+            env = a.agent_env("/tmp/work")
+        finally:
+            if old is None:
+                del os.environ["PWD"]
+            else:
+                os.environ["PWD"] = old
+        self.assertEqual(env["PWD"], "/tmp/work")
+        self.assertTrue(env["XDG_CONFIG_HOME"].startswith("/tmp/work"))
+
 
 if __name__ == "__main__":
     unittest.main()

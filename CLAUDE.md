@@ -51,6 +51,11 @@ Offline brain tests: `EMBEDDING_PROVIDER=fake` (hashed bag of words, dim 256).
 - `opencode run`: `--file` is an array option and swallows trailing positionals; and
   attached files make the model try to `Read` them. The prompt goes through **stdin**.
 - `mcp` must stay pinned `<2`: v2 renamed `FastMCP`.
+- OpenCode takes its project directory from **`$PWD`**, not the subprocess cwd. Passing
+  `cwd=` alone silently loads the caller's `opencode.json` (bash allowed, brain MCP on).
+  Always set `PWD` too (`agent_env`). The deny-all config was ineffective until this
+  was found: a forced `bash` call created a file. Verify with a sentinel-file test,
+  `opencode debug config` alone does not prove it.
 - A private action cannot be used by a **public** repo. `web-template` (public) needs
   this repo public. Flip it back to private afterwards and the workflow there breaks.
 - OpenRouter free tier: 50 requests/day account-wide, shared by chat and embeddings.

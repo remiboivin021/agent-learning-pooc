@@ -50,7 +50,8 @@ def run_one(task: str, arm: str, model: str, timeout: int) -> dict:
         (work / "opencode.json").write_text(json.dumps(arm_config(arm)))
         if arm == "brain":
             shutil.copy(ROOT / "AGENTS.md", work / "AGENTS.md")
-        env = {**os.environ, "XDG_CONFIG_HOME": str(Path(tmp) / "xdg")}
+        # PWD: OpenCode reads its project directory from $PWD, not from the process cwd.
+        env = {**os.environ, "XDG_CONFIG_HOME": str(Path(tmp) / "xdg"), "PWD": str(work)}
         prompt = (src / "prompt.txt").read_text()
         started = time.time()
         try:

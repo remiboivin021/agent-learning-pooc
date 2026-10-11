@@ -84,14 +84,23 @@ def opencode_config() -> dict:
             "mcp": {}, "autoupdate": False, "share": "disabled"}
 
 
+def agent_env(workdir: str) -> dict:
+    """Environment that makes OpenCode load only the config written in workdir.
+
+    Empty XDG config dir: user-level config (MCP servers, plugins) must not leak in.
+    PWD too: OpenCode takes its project directory from $PWD, not from the process cwd,
+    so an inherited PWD silently loads the caller's config (and its permissions).
+    """
+    return {**os.environ, "XDG_CONFIG_HOME": str(Path(workdir) / ".config"), "PWD": workdir}
+
+
 def call_agent(prompt: str, model: str) -> str:
     # Empty working dir: the agent sees only the prompt, not the repository.
     # Prompt goes through stdin: no argv size limit, and the agent has no file to
     # try (and fail) to read with a tool.
     with tempfile.TemporaryDirectory() as workdir:
         (Path(workdir) / "opencode.json").write_text(json.dumps(opencode_config()))
-        # Empty XDG config dir: user-level config (MCP servers, plugins) must not leak in.
-        env = {**os.environ, "XDG_CONFIG_HOME": str(Path(workdir) / ".config")}
+        env = agent_env(workdir)
         result = subprocess.run(
             ["opencode", "run", "--model", model, "--pure"],
             input=prompt, cwd=workdir, env=env, capture_output=True, text=True, timeout=600,
