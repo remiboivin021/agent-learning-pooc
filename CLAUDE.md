@@ -60,6 +60,9 @@ Offline brain tests: `EMBEDDING_PROVIDER=fake` (hashed bag of words, dim 256).
   this repo public. Flip it back to private afterwards and the workflow there breaks.
 - OpenRouter free tier: 50 requests/day account-wide, shared by chat and embeddings.
   Reset 00:00 UTC. A 429 mentioning `free-models-per-day` is this, not a bug.
+- `opencode run` exits 0 on provider errors, including quota exhaustion; the error is
+  only an event in the `--format json` stream. `experiments/run.py` aborts on
+  `free_tier_daily`. Results gathered without this check were all counted as failed fixes.
 - Free models are flaky: empty output, missing closing tag, trailing text. The parser
   and 3 retries absorb it; do not remove them.
 - Embedding model `nvidia/nemotron-3-embed-1b:free` has dim 2048. Changing model

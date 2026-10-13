@@ -76,13 +76,18 @@ def run_one(task: str, arm: str, model: str, timeout: int) -> dict:
             output, error = agent.stdout, agent.stderr[-300:] if agent.returncode else ""
         except subprocess.TimeoutExpired:
             output, error = "", "timeout"
+        # OpenCode exits 0 on provider errors: they only show up as events in the JSON stream.
+        # A quota-exhausted run would be recorded as a failed fix, so stop instead.
+        if "free_tier_daily" in output:
+            raise SystemExit("OpenRouter free-tier daily quota exhausted: results would be "
+                             "meaningless. Rerun after 00:00 UTC.")
         check = subprocess.run([sys.executable, str(src / "check.py")], cwd=work,
                                capture_output=True, text=True, timeout=60)
         return {
             "task": task, "arm": arm, "passed": check.returncode == 0,
             "check_message": (check.stderr or check.stdout).strip()[-200:],
             "brain_called": "brain_search_lessons" in output,
-            "agent_error": error, "seconds": round(time.time() - started, 1),
+            "agent_error": error, "agent_tail": output[-800:], "seconds": round(time.time() - started, 1),
         }
 
 
