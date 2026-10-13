@@ -24,7 +24,7 @@ This is a proof of concept. Nothing here is validated on real volume yet.
 ## Commands
 
 ```
-python3 -m unittest discover -s tests          # 20 tests, no network, no quota
+python3 -m unittest discover -s tests          # 24 tests, no network, no quota
 cd brain && docker compose up -d --build       # brain on 127.0.0.1:8000/mcp
 brain/ingest-run.sh <run-id> [owner/repo]      # needs gh auth and the brain running
 python3 experiments/run.py --out r.jsonl --reps 1
