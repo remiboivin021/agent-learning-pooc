@@ -95,6 +95,8 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", required=True)
     parser.add_argument("--reps", type=int, default=3)
+    parser.add_argument("--first-rep", type=int, default=0,
+                        help="first repetition number, to resume a run on another day")
     parser.add_argument("--tasks", default="")
     parser.add_argument("--arms", default=",".join(ARMS))
     parser.add_argument("--model", default=DEFAULT_MODEL)
@@ -109,7 +111,7 @@ def main() -> int:
         parser.error("OPENROUTER_API_KEY missing: OpenCode would report 'Model not found'")
     names = [t for t in args.tasks.split(",") if t] or sorted(p.name for p in TASKS.iterdir())
     with open(args.out, "a") as out:
-        for rep in range(args.reps):
+        for rep in range(args.first_rep, args.first_rep + args.reps):
             for task in names:
                 for arm in arms:
                     row = {"rep": rep, **run_one(task, arm, args.model, args.timeout)}
